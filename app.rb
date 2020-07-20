@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module ProxyPack
   class App
     class << self
@@ -18,8 +20,17 @@ module ProxyPack
 
       def proxy_pac
         <<~__EOF__
+          var targets = #{socks_proxy_targets};
+          var proxySettingsString = "SOCKS #{public_id_address}:#{socks_proxy_port}";
+
           function FindProxyForURL(url, host) {
-            return "SOCKS #{public_id_address}:#{socks_proxy_port}"
+            if (targets.length == 0) {
+              return proxySettingsString;
+            } else if (targets.some(target => shExpMatch(host, target))) {
+              return proxySettingsString;
+            } else {
+              return "DIRECT";
+            }
           }
         __EOF__
       end
@@ -39,6 +50,10 @@ module ProxyPack
 
       def socks_proxy_port
         ENV['SOCKS_PROXY_PORT']
+      end
+
+      def socks_proxy_targets
+        ENV.fetch('SOCKS_PROXY_TARGETS', '').split(',').to_json
       end
     end
   end
